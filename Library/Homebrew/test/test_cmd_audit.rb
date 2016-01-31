@@ -156,6 +156,23 @@ class FormulaAuditorTests < Homebrew::TestCase
       fa.problems
   end
 
+  def test_audit_file_strict_resource_placement
+    fa = formula_auditor "foo", <<-EOS.undent, :strict => true
+      class Foo < Formula
+        url "https://example.com/foo-1.0.tgz"
+
+        resource "foo2" do
+          url "https://example.com/foo-2.0.tgz"
+        end
+
+        depends_on "openssl"
+      end
+    EOS
+    fa.audit_file
+    assert_equal ["`depends_on` (line 8) should be put before `resource` (line 4)"],
+      fa.problems
+  end
+
   def test_audit_file_strict_url_outside_of_stable_block
     fa = formula_auditor "foo", <<-EOS.undent, :strict => true
       class Foo < Formula
@@ -255,5 +272,31 @@ class FormulaAuditorTests < Homebrew::TestCase
     fa.audit_class
     assert_equal ["AmazonWebServicesFormula is deprecated, use Formula instead"],
       fa.problems
+  end
+
+  def test_audit_line_pkgshare
+    fa = formula_auditor "foo", <<-EOS.undent, :strict => true
+      class Foo < Formula
+        url "http://example.com/foo-1.0.tgz"
+      end
+    EOS
+    fa.audit_line 'ohai "#{share}/foo"', 3
+    assert_equal "Use \#{pkgshare} instead of \#{share}/foo", fa.problems.shift
+
+    fa.audit_line 'ohai "#{share}/foo/bar"', 3
+    assert_equal "Use \#{pkgshare} instead of \#{share}/foo", fa.problems.shift
+
+    fa.audit_line 'ohai share/"foo"', 3
+    assert_equal 'Use pkgshare instead of (share/"foo")', fa.problems.shift
+
+    fa.audit_line 'ohai share/"foo/bar"', 3
+    assert_equal 'Use pkgshare instead of (share/"foo")', fa.problems.shift
+
+    fa.audit_line 'ohai "#{share}/foo-bar"', 3
+    assert_equal [], fa.problems
+    fa.audit_line 'ohai share/"foo-bar"', 3
+    assert_equal [], fa.problems
+    fa.audit_line 'ohai share/"bar"', 3
+    assert_equal [], fa.problems
   end
 end

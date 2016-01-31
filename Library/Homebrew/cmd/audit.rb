@@ -186,6 +186,7 @@ class FormulaAuditor
       [/^  keg_only/,                      "keg_only"],
       [/^  option/,                        "option"],
       [/^  depends_on/,                    "depends_on"],
+      [/^  (go_)?resource/,                "resource"],
       [/^  def install/,                   "install method"],
       [/^  def caveats/,                   "caveats method"],
       [/^  test do/,                       "test block"],
@@ -878,11 +879,11 @@ class FormulaAuditor
         problem "`#{$1}` is now unnecessary"
       end
 
-      if line =~ /#\{share\}\/#{formula.name}/
+      if line =~ %r{#\{share\}/#{formula.name}[/'"]}
         problem "Use \#{pkgshare} instead of \#{share}/#{formula.name}"
       end
 
-      if line =~ /share\/"#{formula.name}"/
+      if line =~ %r{share/"#{formula.name}[/'"]}
         problem "Use pkgshare instead of (share/\"#{formula.name}\")"
       end
     end
